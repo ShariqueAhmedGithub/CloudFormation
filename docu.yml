@@ -94,29 +94,3 @@ Resources:
                 StorageClass: STANDARD_IA
       VersioningConfiguration: 
         Status : Enabled
-
-
-#Outputs:
-#  MySNSTopicTopicARN:
-#    Value: !Ref MySNSTopic
-#    Description: Topic ARN of newly created SNS topic
-#  MyQueue1Info:
-#    Value: !Join 
-#      - ' '
-#      - - 'ARN:'
-#        - !GetAtt 
-#          - MyQueue1
-#          - Arn
-#        - 'URL:'
-#        - !Ref MyQueue1
-#    Description: Queue1 details
-#  MyQueue2Info:
-#    Value: !Join 
-#      - ' '
-#      - - 'ARN:'
-#        - !GetAtt 
-#          - MyQueue2
-#          - Arn
-#        - 'URL:'
-#        - !Ref MyQueue2
-#    Description: Queue2 details
