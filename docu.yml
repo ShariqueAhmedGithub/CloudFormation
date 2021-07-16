@@ -1,0 +1,122 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Resources:
+  MySNSTopic:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      Subscription:
+        - Endpoint: !GetAtt 
+            - MyQueue1
+            - Arn
+          Protocol: sqs
+  MyQueue1:
+    Type: 'AWS::SQS::Queue'
+  MyQueuePolicy:
+    Type: 'AWS::SQS::QueuePolicy'
+    Properties:
+      PolicyDocument:
+        Id: MyQueuePolicy
+        Statement:
+          - Sid: Allow-SendMessage-To-Queue-From-SNS-Topic
+            Effect: Allow
+            Principal:
+              AWS: '*'
+            Action:
+              - 'sqs:SendMessage'
+            Resource: '*'
+            Condition:
+              ArnEquals:
+                'aws:SourceArn': !Ref MySNSTopic
+      Queues:
+        - !Ref MyQueue1
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Policies:
+        - PolicyName: allowLambdaLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - logs:*
+              Resource: arn:aws:logs:*:*:*
+        - PolicyName: allowSqs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - sqs:ReceiveMessage
+              - sqs:DeleteMessage
+              - sqs:GetQueueAttributes
+              - sqs:ChangeMessageVisibility
+              Resource: !GetAtt MyQueue1.Arn
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: code-from-cloudformation
+        S3Key: code.zip
+      Handler : code.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.8
+      Timeout: 30
+      MemorySize: 512
+  LambdaFunctionEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 10
+      Enabled: true
+      EventSourceArn: !GetAtt MyQueue1.Arn
+      FunctionName: !GetAtt LambdaFunction.Arn
+  S3Bucket :
+    Type: AWS::S3::Bucket
+    Properties: 
+      AccessControl: PublicReadWrite
+      BucketName: sns-to-sqs-to-lambda-to-s3
+      LifecycleConfiguration: 
+        Rules :
+          - Id : TransitionRule
+            Status: Enabled
+            ExpirationInDays : 365
+            Transitions :
+              - TransitionInDays: 90
+                StorageClass: STANDARD_IA
+      VersioningConfiguration: 
+        Status : Enabled
+
+
+#Outputs:
+#  MySNSTopicTopicARN:
+#    Value: !Ref MySNSTopic
+#    Description: Topic ARN of newly created SNS topic
+#  MyQueue1Info:
+#    Value: !Join 
+#      - ' '
+#      - - 'ARN:'
+#        - !GetAtt 
+#          - MyQueue1
+#          - Arn
+#        - 'URL:'
+#        - !Ref MyQueue1
+#    Description: Queue1 details
+#  MyQueue2Info:
+#    Value: !Join 
+#      - ' '
+#      - - 'ARN:'
+#        - !GetAtt 
+#          - MyQueue2
+#          - Arn
+#        - 'URL:'
+#        - !Ref MyQueue2
+#    Description: Queue2 details
